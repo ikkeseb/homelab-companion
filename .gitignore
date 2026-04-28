@@ -7,6 +7,10 @@ out/
 # Outsource sandbox — intermediate work briefs from external agents
 outsource/
 
+# Internal notes and eval data — not part of the shipped skill
+docs/
+evals/
+
 # macOS
 .DS_Store
 

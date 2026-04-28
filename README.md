@@ -87,6 +87,24 @@ optionally pulling logs via
 section by section. Output is an editable Markdown draft, not a
 polished final document.
 
+## How well does it work
+
+Iteration-1 benchmark — 4 evals, ~5 runs each, 22 assertions
+total: **22/22 passes with skill vs 4/22 baseline (+83 pp)**.
+
+![Iteration-1 benchmark — with-skill vs baseline pass rates per eval, anchored on eval-3 confidently-wrong mechanism](assets/iter-1-benchmark.png)
+
+The most teachable case is eval-3. Both arms produced
+structurally-recognizable post-mortems, but only the with-skill
+arm named the actual mechanism (parent-restart-orphans-child).
+The baseline confidently named the wrong one (tunnel stall /
+interface goes bad) — exactly the failure shape the catalog
+targets.
+
+Cost: with-skill mode runs ~52% more tokens and ~37% more
+wall-clock vs baseline, driven by progressive-disclosure file
+loads.
+
 ## What's in v0.1
 
 Six pitfalls covering the highest-yield homelab failure modes:
