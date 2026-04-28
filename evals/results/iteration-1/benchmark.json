@@ -1,0 +1,154 @@
+{
+  "metadata": {
+    "skill_name": "homelab-companion",
+    "skill_path": "/Users/sebm1/homelab-companion",
+    "executor_model": "claude-sonnet-4 (subagents)",
+    "timestamp": "2026-04-28T23:35:00Z",
+    "evals_run": [0, 1, 2, 3],
+    "runs_per_configuration": 1,
+    "iteration": 1
+  },
+  "runs": [
+    {
+      "eval_id": 0,
+      "eval_name": "preventive-ufw-docker-ci-runner",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {"pass_rate": 1.0, "passed": 5, "failed": 0, "total": 5, "time_seconds": 48.5, "tokens": 22007},
+      "expectations": [
+        {"text": "Names the source-IP issue: container is on bridge subnet (172.x.x.x), not LAN, so existing LAN ufw allow rule does not match", "passed": true, "evidence": "Names bridge subnet 172.18.0.0/16 vs LAN 192.168.x.x mismatch directly."},
+        {"text": "Recommends network_mode: host as a viable fix for outbound-only CI runner", "passed": true, "evidence": "Primary recommendation with full compose snippet."},
+        {"text": "Avoids the 'Docker bypasses ufw' blanket claim", "passed": true, "evidence": "Explicitly distinguishes -p-published vs bridge-to-host-LAN paths."},
+        {"text": "Avoids recommending bare 'ufw allow 22'", "passed": true, "evidence": "Only ufw rule mentioned is subnet-scoped: ufw allow from 172.18.0.0/16 to any port 22."},
+        {"text": "Mentions silent DROP / no ICMP", "passed": true, "evidence": "'silently time out... No ICMP unreachable, nothing in auth.log.'"}
+      ]
+    },
+    {
+      "eval_id": 0,
+      "eval_name": "preventive-ufw-docker-ci-runner",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {"pass_rate": 0.0, "passed": 0, "failed": 5, "total": 5, "time_seconds": 38.6, "tokens": 16236},
+      "expectations": [
+        {"text": "Names the source-IP issue: container is on bridge subnet (172.x.x.x), not LAN, so existing LAN ufw allow rule does not match", "passed": false, "evidence": "Mentions bridge but never connects it to the ufw allow-rule mismatch."},
+        {"text": "Recommends network_mode: host as a viable fix for outbound-only CI runner", "passed": false, "evidence": "Recommends extra_hosts: host-gateway instead."},
+        {"text": "Avoids the 'Docker bypasses ufw' blanket claim", "passed": false, "evidence": "Section title: 'Docker bypasses ufw — this is the big one' — the canonical wrong framing."},
+        {"text": "Avoids recommending bare 'ufw allow 22'", "passed": false, "evidence": "Recommends 'ufw allow in on docker0 to any port 22' — interface-based, suboptimal."},
+        {"text": "Mentions silent DROP / no ICMP", "passed": false, "evidence": "No mention."}
+      ]
+    },
+    {
+      "eval_id": 1,
+      "eval_name": "preventive-gluetun-qbit-sidecar",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {"pass_rate": 1.0, "passed": 5, "failed": 0, "total": 5, "time_seconds": 48.5, "tokens": 24260},
+      "expectations": [
+        {"text": "Names the netns-orphan failure mode", "passed": true, "evidence": "'Docker does not re-wire qBit to that new namespace... namespace that now contains only lo.'"},
+        {"text": "Warns auto-recovery script as described is the canonical trigger", "passed": true, "evidence": "'Restart gluetun on unhealthy and then stops is a silent failure machine.'"},
+        {"text": "Specifies ordering: parent healthy first, then children", "passed": true, "evidence": "Wait-loop with healthcheck then docker restart qbittorrent. 'Order is non-negotiable.'"},
+        {"text": "Mentions diagnostic primitives (SandboxID / ip addr lo only)", "passed": true, "evidence": "Both commands provided with expected outputs."},
+        {"text": "Flags surface signals stay green", "passed": true, "evidence": "'Every surface signal stays green' — enumerates docker ps Up, healthcheck, port mapping, qBit logs."}
+      ]
+    },
+    {
+      "eval_id": 1,
+      "eval_name": "preventive-gluetun-qbit-sidecar",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {"pass_rate": 0.0, "passed": 0, "failed": 5, "total": 5, "time_seconds": 49.4, "tokens": 16584},
+      "expectations": [
+        {"text": "Names the netns-orphan failure mode", "passed": false, "evidence": "Discusses VPN bypass, healthcheck timing, port forwarding, DNS leaks — none are the netns-orphan trap."},
+        {"text": "Warns auto-recovery script as described is the canonical trigger", "passed": false, "evidence": "Warns about restart loops/rate limiting — not netns orphan."},
+        {"text": "Specifies ordering: parent healthy first, then children", "passed": false, "evidence": "Discusses depends_on: condition: service_healthy for compose startup only."},
+        {"text": "Mentions diagnostic primitives (SandboxID / ip addr lo only)", "passed": false, "evidence": "No mention."},
+        {"text": "Flags surface signals stay green", "passed": false, "evidence": "Treats healthcheck as authoritative."}
+      ]
+    },
+    {
+      "eval_id": 2,
+      "eval_name": "retrospective-git-script-intermittent",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {"pass_rate": 1.0, "passed": 6, "failed": 0, "total": 6, "time_seconds": 69.2, "tokens": 26489},
+      "expectations": [
+        {"text": "Output structured as PM with recognizable sections", "passed": true, "evidence": "Frontmatter + What broke / Why / Why intermittent / Fix / Recovery / Verification / Open."},
+        {"text": "Names root cause as call ordering", "passed": true, "evidence": "Names call-ordering bug; links to catalog pitfall."},
+        {"text": "Explains why intermittent (silent short-circuit)", "passed": true, "evidence": "'Short-circuits with Already up to date and never inspects working-tree state.'"},
+        {"text": "Recommends structural fix (sync before write)", "passed": true, "evidence": "'Invert the call order. Pull-rebase must run before any working-tree write.'"},
+        {"text": "Does NOT recommend stash/--autostash as primary", "passed": true, "evidence": "Explicitly rejects them as arg-level fixes."},
+        {"text": "Open identifies similar latent bug in other scripts", "passed": true, "evidence": "'Sweep the repo for other places where the write → sync → push shape might exist.'"}
+      ]
+    },
+    {
+      "eval_id": 2,
+      "eval_name": "retrospective-git-script-intermittent",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {"pass_rate": 0.5, "passed": 3, "failed": 3, "total": 6, "time_seconds": 41.3, "tokens": 16395},
+      "expectations": [
+        {"text": "Output structured as PM with recognizable sections", "passed": true, "evidence": "Summary / Timeline / Root Cause / Fix / Action Items."},
+        {"text": "Names root cause as call ordering", "passed": false, "evidence": "Names mechanism but not as a call-ordering pattern."},
+        {"text": "Explains why intermittent (silent short-circuit)", "passed": true, "evidence": "Explains conditional firing tied to whether origin had new commits."},
+        {"text": "Recommends structural fix (sync before write)", "passed": true, "evidence": "'Recommended: reorder the operations.'"},
+        {"text": "Does NOT recommend stash/--autostash as primary", "passed": true, "evidence": "Reorder recommended; stash listed as alternative with caveats."},
+        {"text": "Open identifies similar latent bug in other scripts", "passed": false, "evidence": "Action items focus on this specific script only."}
+      ]
+    },
+    {
+      "eval_id": 3,
+      "eval_name": "retrospective-qbit-netns-orphan",
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {"pass_rate": 1.0, "passed": 6, "failed": 0, "total": 6, "time_seconds": 80.4, "tokens": 27556},
+      "expectations": [
+        {"text": "Output structured as PM with recognizable sections", "passed": true, "evidence": "Frontmatter + full template."},
+        {"text": "Names root cause as netns-orphan", "passed": true, "evidence": "'Gluetun received a new network namespace on restart. Docker did not re-wire qBittorrent.'"},
+        {"text": "Cites diagnostic primitives that would have shortcut 2-hour debug", "passed": true, "evidence": "Full retroactive walk: SandboxID, ip -4 addr, NetworkMode/Id mismatch."},
+        {"text": "Recommends external HTTP probe", "passed": true, "evidence": "'Add an external HTTP probe for the qBit web UI.'"},
+        {"text": "Does NOT frame as 'mystery, restart fixed it'", "passed": true, "evidence": "Mechanism explained at length."},
+        {"text": "Recommends auto-recovery cascading restart", "passed": true, "evidence": "Full sequence: docker restart gluetun → wait healthy → docker restart qbittorrent."}
+      ]
+    },
+    {
+      "eval_id": 3,
+      "eval_name": "retrospective-qbit-netns-orphan",
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {"pass_rate": 0.167, "passed": 1, "failed": 5, "total": 6, "time_seconds": 50.8, "tokens": 16651},
+      "expectations": [
+        {"text": "Output structured as PM with recognizable sections", "passed": true, "evidence": "What happened / Root cause / Monitoring / Action items."},
+        {"text": "Names root cause as netns-orphan", "passed": false, "evidence": "WRONG mechanism — claims 'tunnel stalls / interface goes bad' instead of parent-restart-orphans-child."},
+        {"text": "Cites diagnostic primitives that would have shortcut 2-hour debug", "passed": false, "evidence": "Recommends checking gluetun's own state, not the child's empty namespace. Misses SandboxID."},
+        {"text": "Recommends external HTTP probe", "passed": true, "evidence": "Option 2: Uptime Kuma HTTP monitor on nas-01:8080."},
+        {"text": "Does NOT frame as 'mystery, restart fixed it'", "passed": false, "evidence": "Explains a mechanism, but the wrong one — confidently misdirected."},
+        {"text": "Recommends auto-recovery cascading restart", "passed": false, "evidence": "Recommends auto-restart on qBit's own healthcheck — misses the parent-restart-must-cascade rule."}
+      ]
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {"mean": 1.0, "stddev": 0.0, "min": 1.0, "max": 1.0},
+      "time_seconds": {"mean": 61.65, "stddev": 15.5, "min": 48.5, "max": 80.4},
+      "tokens": {"mean": 25078, "stddev": 2417, "min": 22007, "max": 27556}
+    },
+    "without_skill": {
+      "pass_rate": {"mean": 0.167, "stddev": 0.231, "min": 0.0, "max": 0.5},
+      "time_seconds": {"mean": 45.0, "stddev": 6.0, "min": 38.6, "max": 50.8},
+      "tokens": {"mean": 16466, "stddev": 192, "min": 16236, "max": 16651}
+    },
+    "delta": {
+      "pass_rate": "+0.833",
+      "time_seconds": "+16.65",
+      "tokens": "+8612"
+    }
+  },
+  "notes": [
+    "Pass rate delta is +83 percentage points: 22/22 with skill vs 4/22 without skill. Skill cleanly differentiates on every test case.",
+    "Strong differentiator on preventive evals (eval-0, eval-1) — baseline scored 0/5 on both. The pitfalls the catalog targets are exactly the LLM-default-trap shape — baseline reliably falls into them.",
+    "Eval-2 (retrospective git script) is the weakest differentiator: baseline got 3/6 because the technical answer (reorder ops) is reachable from general git knowledge. The skill still wins because it generalizes the pattern beyond this script and explicitly rejects --autostash with reasoning.",
+    "Eval-3 (retrospective qbit netns) shows the catalog's biggest value: the baseline confidently produced the WRONG mechanism (gluetun tunnel stall) while the skill produced the right one (parent-restart-orphans-child). Wrong-but-confident is the most dangerous failure mode for a homelab assistant.",
+    "Token cost: with-skill uses ~52% more tokens than baseline (25k vs 16.5k mean). Expected — the skill loads pitfall files and PM templates progressively. Justified by the pass-rate delta.",
+    "Time cost: with-skill is ~37% slower (62s vs 45s mean), driven mostly by file reads. Acceptable for the quality lift."
+  ]
+}

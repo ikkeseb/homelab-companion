@@ -35,7 +35,7 @@ it from a fresh Claude Code session". Verification is behavioral.
 
 ## Vault integration
 
-This repo occasionally writes to `the-vault` (Seb's personal
+This repo occasionally writes to `the-vault` (ikkeseb's personal
 knowledge vault). Path varies by machine:
 `/Users/sebm1/the-vault/` on Mac, `C:/Users/Seb/the-vault/` on
 Windows.
@@ -51,8 +51,8 @@ that touch customer work, not just to notes written to the vault.
 
 **Sensitive content — never write to main vault `raw/`.** Captures
 there can land in a manual commit at any time and reach GitHub.
-Flag to Seb for chat capture into `private/raw/`, or defer until
-the next vault session.
+Flag to ikkeseb for chat capture into `private/raw/`, or defer
+until the next vault session.
 
 ## Design rationale
 
