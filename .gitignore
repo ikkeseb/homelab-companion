@@ -4,6 +4,9 @@
 # Generated output
 out/
 
+# Outsource sandbox — intermediate work briefs from external agents
+outsource/
+
 # macOS
 .DS_Store
 
