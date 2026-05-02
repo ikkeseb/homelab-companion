@@ -49,52 +49,62 @@ template's frontmatter (`service`, `duration`, `machine`,
 ## Phase 2 — Root-cause hypothesis
 
 **Goal.** Form a falsifiable hypothesis about why it broke.
-Pitfall catalog is your first checkpoint.
+Apply the [forensics framework](framework/INDEX.md) to test the
+hypothesis before accepting it.
 
 **Opening prompt:**
 
 > Looking at what you've described:
-> 1. Does the symptom match any of the catalog pitfalls? (I'll
->    check `references/pitfalls/INDEX.md` against the domain.)
-> 2. What's the simplest explanation that fits all the
+> 1. What's the simplest explanation that fits all the
 >    evidence?
-> 3. What would have to be true for that explanation to be
+> 2. What would have to be true for that explanation to be
 >    wrong?
 >
-> If you're not sure, that's fine — describe what you saw and
-> we'll narrow it down together. I won't guess past the
-> evidence.
+> Before we commit to it, I'll run it through the four
+> framework principles (data layer, ordering, read-only,
+> default-named) and check the catalog for a matching pitfall.
 
-**Catalog check.** Always load
-`references/pitfalls/INDEX.md` and scan for matching domain. If
-the symptom maps to a catalog entry (`ufw-docker bridge drop`,
-`network_mode netns orphan`, etc.), load that file and treat its
-"Why LLMs miss this" section as a *de-bias prompt* — re-read
-the user's description while resisting the named default trap.
+**Framework check.** Run the four principles from
+[`framework/INDEX.md`](framework/INDEX.md) against the candidate
+hypothesis:
 
-**De-biasing checks before committing to a hypothesis:**
+1. **Data layer over surface layer**
+   ([01-data-vs-surface.md](framework/01-data-vs-surface.md)) —
+   are you trusting a tool's summary (`docker ps`, `ufw status`,
+   schema validator) when you should be inspecting what the
+   tool is summarizing? `SandboxID`, source IPs, parsed types
+   are the data layer; the tool's verdict is the surface.
+2. **Ordering, not arg-tuning**
+   ([02-ordering-vs-args.md](framework/02-ordering-vs-args.md)) —
+   does the bug live in the call's *position* relative to other
+   calls? Intermittent failures and "it worked for weeks then
+   started failing" are signals. Reorder the calls; don't tune
+   the args.
+3. **Read-only before mutation**
+   ([03-readonly-first.md](framework/03-readonly-first.md)) —
+   is the diagnostic command you're about to suggest read-only?
+   Do not suggest `force recheck`, `git reset --hard`, `fsck`,
+   `REPAIR TABLE`, or any operation whose docs include
+   `rebuild`, `repair`, `force`, `reset` — without first naming
+   the read-only alternative.
+4. **Name the default before answering**
+   ([04-debias-prompt.md](framework/04-debias-prompt.md)) —
+   what's the plausible-but-wrong default answer for this
+   symptom? Name it explicitly before suggesting your
+   hypothesis. If your hypothesis *is* the default, run
+   principles 1–3 against it harder.
 
-- Don't suggest mutating diagnostics. See
-  [`mutative-vs-readonly-diagnostics.md`](pitfalls/mutative-vs-readonly-diagnostics.md).
-  If the user is mid-incident and asks for help, default to
-  read-only inspection commands. Do not suggest `force recheck`,
-  `git reset --hard`, `fsck`, `REPAIR TABLE`, "rebuild the
-  index", or any operation whose docs include the word
-  "repair", "rebuild", or "force" — without first naming the
-  read-only alternative.
-- Don't reach for arg-tuning when the bug is structural. See
-  [`sync-before-write.md`](pitfalls/sync-before-write.md). If
-  the issue smells like ordering, surface ordering as the fix
-  shape, not stash flags or merge strategies.
-- Don't trust a single layer. See the cluster note in
-  [`pitfalls/INDEX.md`](pitfalls/INDEX.md). `docker ps`,
-  `iptables -L`, schema validators all lie in characteristic
-  ways. Inspect the data layer (SandboxID, source IPs, parsed
-  types) before concluding.
+**Catalog check.** Load
+[`pitfalls/INDEX.md`](pitfalls/INDEX.md) and scan for matching
+domain. If the symptom maps to a catalog entry, load that file —
+its "Why LLMs miss this" section is principle 4 pre-computed
+for that case, and its "Fix" section names the structural move
+the framework would land on. Catalog match is a shortcut; the
+framework still applies if no match exists.
 
-**Hand-off:** once you have a hypothesis and the user agrees
-it's worth testing, fill the template's `## Why` section.
-Move to Phase 3.
+**Hand-off:** once you have a hypothesis that survives the
+framework checks and the user agrees it's worth testing, fill
+the template's `## Why` section. Move to Phase 3.
 
 ---
 

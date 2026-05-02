@@ -32,7 +32,7 @@ print_usage() {
 gather-logs.sh — bundle service logs into one labeled stdout dump
 
 USAGE
-    gather-logs.sh <service> [--since <duration>]
+    gather-logs.sh <service> [--since <duration>] [--max-lines N]
 
 ARGUMENTS
     <service>          Service name. Used as both the systemd unit
@@ -44,10 +44,15 @@ ARGUMENTS
                        "2 hours ago", "today", "2026-04-28".
                        Default: "1 hour ago".
 
+    --max-lines N      Cap each log section to the most recent N
+                       lines (journalctl + docker logs). Protects
+                       Claude's context window from verbose
+                       services. Default: 500. Use 0 for no cap.
+
 EXAMPLES
     gather-logs.sh qbittorrent --since 2h
-    gather-logs.sh sonarr --since "today"
-    gather-logs.sh nginx --since 30m
+    gather-logs.sh sonarr --since "today" --max-lines 1000
+    gather-logs.sh nginx --since 30m --max-lines 0
 EOF
 }
 
@@ -67,6 +72,7 @@ SERVICE="$1"
 shift
 
 SINCE="1 hour ago"
+MAX_LINES=500
 while [ "$#" -gt 0 ]; do
     case "$1" in
         --since)
@@ -81,6 +87,18 @@ while [ "$#" -gt 0 ]; do
             SINCE="${1#--since=}"
             shift
             ;;
+        --max-lines)
+            if [ "$#" -lt 2 ]; then
+                echo "ERROR: --max-lines requires a value" >&2
+                exit 2
+            fi
+            MAX_LINES="$2"
+            shift 2
+            ;;
+        --max-lines=*)
+            MAX_LINES="${1#--max-lines=}"
+            shift
+            ;;
         *)
             echo "ERROR: unrecognised argument: $1" >&2
             print_usage >&2
@@ -88,6 +106,14 @@ while [ "$#" -gt 0 ]; do
             ;;
     esac
 done
+
+# Validate --max-lines is a non-negative integer (0 = no cap)
+case "$MAX_LINES" in
+    ''|*[!0-9]*)
+        echo "ERROR: --max-lines must be a non-negative integer (got: $MAX_LINES)" >&2
+        exit 2
+        ;;
+esac
 
 # Normalize systemd unit name (add .service if not specified)
 case "$SERVICE" in
@@ -141,6 +167,11 @@ printf 'service:    %s\n' "$SERVICE"
 printf 'unit:       %s\n' "$UNIT"
 printf 'container:  %s\n' "$CONTAINER"
 printf 'since:      %s\n' "$SINCE"
+if [ "$MAX_LINES" -eq 0 ]; then
+    printf 'max-lines:  unlimited\n'
+else
+    printf 'max-lines:  %s (most recent)\n' "$MAX_LINES"
+fi
 printf 'host:       %s\n' "$(hostname 2>/dev/null || echo unknown)"
 printf 'date:       %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || date)"
 
@@ -166,12 +197,22 @@ fi
 # journalctl
 #######################################
 
-section "journalctl -u ${UNIT} --since \"${SINCE}\""
+if [ "$MAX_LINES" -eq 0 ]; then
+    section "journalctl -u ${UNIT} --since \"${SINCE}\""
+else
+    section "journalctl -u ${UNIT} --since \"${SINCE}\" --lines=${MAX_LINES}"
+fi
 if [ "$HAVE_JOURNALCTL" -eq 1 ]; then
-    if journalctl -u "$UNIT" --since "$SINCE" --no-pager 2>&1; then
-        :
+    if [ "$MAX_LINES" -eq 0 ]; then
+        journalctl -u "$UNIT" --since "$SINCE" --no-pager 2>&1
     else
-        rc=$?
+        # --lines caps total output to the most recent N entries.
+        # Combined with --since, journalctl returns at most N lines
+        # within the time window.
+        journalctl -u "$UNIT" --since "$SINCE" --lines="$MAX_LINES" --no-pager 2>&1
+    fi
+    rc=$?
+    if [ "$rc" -ne 0 ]; then
         printf '\n[journalctl exit code: %d]\n' "$rc"
     fi
 else
@@ -182,14 +223,22 @@ fi
 # docker logs
 #######################################
 
-section "docker logs ${CONTAINER} --since \"${SINCE}\""
+if [ "$MAX_LINES" -eq 0 ]; then
+    section "docker logs ${CONTAINER} --since \"${SINCE}\""
+else
+    section "docker logs ${CONTAINER} --since \"${SINCE}\" --tail=${MAX_LINES}"
+fi
 if [ "$HAVE_DOCKER" -eq 1 ]; then
     # Check the container exists before pulling logs — clearer than
     # the raw "Error: No such container" message.
     if docker inspect "$CONTAINER" >/dev/null 2>&1; then
         # 2>&1 because docker writes container stderr to its stderr,
         # which we want bundled into the same readable stream.
-        docker logs --since "$SINCE" "$CONTAINER" 2>&1
+        if [ "$MAX_LINES" -eq 0 ]; then
+            docker logs --since "$SINCE" "$CONTAINER" 2>&1
+        else
+            docker logs --since "$SINCE" --tail "$MAX_LINES" "$CONTAINER" 2>&1
+        fi
         rc=$?
         if [ "$rc" -ne 0 ]; then
             printf '\n[docker logs exit code: %d]\n' "$rc"
